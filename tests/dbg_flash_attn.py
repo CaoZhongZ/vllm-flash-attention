@@ -1698,7 +1698,7 @@ def test_flash_attn_paged_kvcache_overflow(
     paged_kv_block_size,
     causal,
     dtype,
-):  
+):
     device = "cuda"
     num_blocks = 1000*16//paged_kv_block_size
     key_cache = torch.rand([num_blocks, paged_kv_block_size, nheads, d], dtype=dtype, device=device)
@@ -1720,3 +1720,16 @@ def test_flash_attn_paged_kvcache_overflow(
             block_table=block_tables,
             causal=causal,
         )
+
+def main():
+    dtype = torch.float16
+    deterministic = False
+    alibi = False
+    local = False
+    causal = True
+    d = [64, 96, 128, 256]
+    swap_sq_sk = False
+    test_flash_attn_splitkv(seqlen_q, seqlen_k, swap_sq_sk, d, causal, local, alibi, deterministic, dtype)
+
+if __name__ == '__main__':
+    main()
