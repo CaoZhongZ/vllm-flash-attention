@@ -8,9 +8,9 @@ from vllm_flash_attn import (
     flash_attn_varlen_func,
     flash_attn_with_kvcache,
 )
-from flash_attn.bert_padding import pad_input, unpad_input
-from flash_attn.flash_attn_interface import _get_block_size_n
-from flash_attn.layers.rotary import apply_rotary_emb
+
+from bert_padding import pad_input, unpad_input
+from vllm_flash_attn.layers.rotary import apply_rotary_emb
 
 MAX_HEADDIM_SM8x = 192
 
@@ -19,7 +19,6 @@ is_sm75 = torch.cuda.get_device_capability("cuda") == (7, 5)
 is_sm8x = torch.cuda.get_device_capability("cuda")[0] == 8
 is_sm80 = torch.cuda.get_device_capability("cuda") == (8, 0)
 is_sm90 = torch.cuda.get_device_capability("cuda") == (9, 0)
-
 
 def attn_bias_from_alibi_slopes(
     slopes, seqlen_q, seqlen_k, query_padding_mask=None, key_padding_mask=None, causal=False, key_leftpad=None
@@ -561,11 +560,6 @@ def get_dropout_fraction(
 def test_flash_attn_varlen_output(
     seqlen_q, seqlen_k, d, dropout_p, causal, local, alibi, deterministic, mha_type, dtype, kvpacked, softcap
 ):
-    if (
-        max(seqlen_q, seqlen_k) >= 2048
-        and torch.cuda.get_device_properties("cuda").total_memory <= 16 * 2**30
-    ):
-        pytest.skip()  # Reference implementation OOM
     if softcap > 0.0 and dropout_p > 0.0:
         pytest.skip("Softcap and dropout not supported together")
     device = "cuda"
@@ -1648,7 +1642,7 @@ def test_flash_attn_paged_kvcache_overflow(
 
 def main():
     kvpacked = False
-    mha_type=gqa
+    mha_type='gqa'
     dropout_p = 0.0
     softcap = 0.0
     dtype = torch.float16
@@ -1656,10 +1650,9 @@ def main():
     alibi = False
     local = False
     causal = True
-    d = [64, 96, 128, 256]
-    seqlen_q = [2, 3]
-    seqlen_k = [2048, 20000]
-
+    d = 128
+    seqlen_q = 2
+    seqlen_k = 200000
     test_flash_attn_varlen_output(
         seqlen_q, seqlen_k, d, dropout_p, causal, local, alibi,
         deterministic, mha_type, dtype, kvpacked, softcap
