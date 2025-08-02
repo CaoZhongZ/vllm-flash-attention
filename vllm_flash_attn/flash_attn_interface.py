@@ -36,7 +36,7 @@ def _is_fa2_supported(device = None) -> Tuple[bool, Optional[str]]:
         return False, \
             "FA2 is only supported on devices with compute capability >= 8"
     return True, None
-    
+
 def _is_fa3_supported(device = None) -> Tuple[bool, Optional[str]]:
     if not FA3_AVAILABLE:
         return False, f"FA3 is unavaible due to: {FA3_UNAVAILABLE_REASON}"
@@ -65,7 +65,7 @@ def fa_version_unsupported_reason(fa_version: int, device = None) \
         return _is_fa3_supported(device)[1]
 
 #
-#  For vLLM we only care about `flash_attn_varlen_func` and 
+#  For vLLM we only care about `flash_attn_varlen_func` and
 #   `flash_attn_with_kvcache` so we only maintain wrappers for these two.
 #
 
@@ -204,7 +204,7 @@ def flash_attn_varlen_func(
         "cu_seqlens_k and seqused_k cannot be provided at the same time"
     assert block_table is None or seqused_k is not None, \
         "seqused_k must be provided if block_table is provided"
-    
+
     if softmax_scale is None:
         softmax_scale = q.shape[-1] ** (-0.5)
     # custom op does not support non-tuple input
@@ -215,9 +215,9 @@ def flash_attn_varlen_func(
         assert len(window_size) == 2
         real_window_size = (window_size[0], window_size[1])
     q, k, v = [maybe_contiguous(x) for x in (q, k, v)]
-    
+
     dummy_cu_seqlens_k = torch.empty_like(cu_seqlens_q)
-    
+
     if fa_version == 2:
         if scheduler_metadata is not None and q_descale is not None \
             and k_descale is not None and v_descale is not None:
@@ -231,7 +231,7 @@ def flash_attn_varlen_func(
             q, k, v,
             out,
             cu_seqlens_q,
-            # cu_seqlens_k not used since we use seqused_k, but flash_api.cpp 
+            # cu_seqlens_k not used since we use seqused_k, but flash_api.cpp
             # still wants it so we pass all zeros
             dummy_cu_seqlens_k if cu_seqlens_k is None else cu_seqlens_k,
             seqused_k,
@@ -571,7 +571,7 @@ def sparse_attn_varlen_func(
     block_count and block_offset for slash sparsity patterns, and
     column_count and column_index for vertical sparsity patterns.
     For more details please refer to Appendix C.4.2 of paper https://arxiv.org/abs/2407.02490.
-    
+
     Arguments:
         q: (total_q, nheads, headdim), where total_q = total number of query tokens in the batch.
         k: (total_k, nheads_k, headdim), where total_k = total number of key tokens in the batch.
@@ -607,7 +607,7 @@ def sparse_attn_varlen_func(
     """
     if softmax_scale is None:
         softmax_scale = q.shape[-1] ** (-0.5)
-        
+
     q, k, v = [maybe_contiguous(x) for x in (q, k, v)]
     out, softmax_lse = torch.ops._vllm_fa2_C.varlen_fwd_sparse(
         q,

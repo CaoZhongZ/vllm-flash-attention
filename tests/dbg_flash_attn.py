@@ -4,13 +4,8 @@ import pytest
 import torch
 import torch.nn.functional as F
 from einops import rearrange, repeat
-from flash_attn import (
-    flash_attn_func,
-    flash_attn_kvpacked_func,
-    flash_attn_qkvpacked_func,
+from vllm_flash_attn import (
     flash_attn_varlen_func,
-    flash_attn_varlen_kvpacked_func,
-    flash_attn_varlen_qkvpacked_func,
     flash_attn_with_kvcache,
 )
 from flash_attn.bert_padding import pad_input, unpad_input
@@ -563,43 +558,6 @@ def get_dropout_fraction(
     dropped_total = dropped.sum()
     return dropped.sum() / valid.sum()
 
-@pytest.mark.parametrize("kvpacked", [True, False])
-# @pytest.mark.parametrize('kvpacked', [False])
-@pytest.mark.parametrize("dtype", ([torch.float16] if is_sm75 else [torch.float16, torch.bfloat16]))
-# @pytest.mark.parametrize('dtype', [torch.float16])
-@pytest.mark.parametrize("mha_type", ["mha", "mqa", "gqa"])
-# @pytest.mark.parametrize('mha_type', ["mqa"])
-@pytest.mark.parametrize("deterministic", [False, True])
-# @pytest.mark.parametrize("deterministic", [True])
-@pytest.mark.parametrize("alibi", [False, True])
-# @pytest.mark.parametrize("alibi", [True])
-@pytest.mark.parametrize("local", [False, True])
-# @pytest.mark.parametrize("local", [True])
-@pytest.mark.parametrize("causal", [False, True])
-# @pytest.mark.parametrize('causal', [True])
-@pytest.mark.parametrize("d", [32, 59, 64, 80, 96, 111, 128, 160, 192, 224, 256])
-# @pytest.mark.parametrize("d", [32, 64, 96, 128, 160, 192, 224, 256])
-# @pytest.mark.parametrize('d', [64])
-@pytest.mark.parametrize(
-    "seqlen_q,seqlen_k",
-    [
-        (1, 147),
-        (113, 203),
-        (128, 217),
-        (113, 211),
-        (108, 256),
-        (256, 512),
-        (512, 256),
-        (1024, 1024),
-        (1023, 1024),
-        (1024, 1023),
-        (2048, 2048),
-    ],
-)
-# @pytest.mark.parametrize('seqlen_q,seqlen_k', [(128, 128)])
-@pytest.mark.parametrize("dropout_p", [0.0, 0.17])
-@pytest.mark.parametrize("softcap", [0.0, 50.0])
-# @pytest.mark.parametrize('dropout_p', [0.0])
 def test_flash_attn_varlen_output(
     seqlen_q, seqlen_k, d, dropout_p, causal, local, alibi, deterministic, mha_type, dtype, kvpacked, softcap
 ):
@@ -882,39 +840,6 @@ def test_flash_attn_varlen_output(
         assert (dv - dv_ref).abs().max().item() <= 3 * (dv_pt - dv_ref).abs().max().item()
 
 
-@pytest.mark.parametrize("dtype", ([torch.float16] if is_sm75 else [torch.float16, torch.bfloat16]))
-# @pytest.mark.parametrize("dtype", [torch.float16])
-@pytest.mark.parametrize("deterministic", [False, True])
-# @pytest.mark.parametrize("deterministic", [True])
-@pytest.mark.parametrize("alibi", [False, True])
-# @pytest.mark.parametrize("alibi", [True])
-@pytest.mark.parametrize("local", [False, True])
-# @pytest.mark.parametrize("local", [False])
-@pytest.mark.parametrize("causal", [False, True])
-# @pytest.mark.parametrize("causal", [True])
-@pytest.mark.parametrize("d", [32, 40, 59, 64, 80, 96, 111, 128, 160, 192, 224, 256])
-# @pytest.mark.parametrize('d', [32, 64, 96, 128, 160, 192, 224, 256])
-# @pytest.mark.parametrize('d', [32, 40, 64, 80, 96, 128, 160, 192])
-# @pytest.mark.parametrize('d', [32, 64, 96, 128, 160, 192])
-# @pytest.mark.parametrize('d', [56, 80])
-# @pytest.mark.parametrize("d", [64])
-@pytest.mark.parametrize("swap_sq_sk", [False, True])
-# @pytest.mark.parametrize("swap_sq_sk", [False])
-@pytest.mark.parametrize(
-    "seqlen_q,seqlen_k",
-    [
-        (3, 1024),
-        (1, 339),
-        (64, 800),
-        (3, 799),
-        (64, 2048),
-        (16, 20000),
-        (16, 100000),
-        (128, 128),
-        (256, 256),
-    ],
-)
-# @pytest.mark.parametrize('seqlen_q,seqlen_k', [(256, 128)])
 def test_flash_attn_splitkv(
     seqlen_q, seqlen_k, swap_sq_sk, d, causal, local, alibi, deterministic, dtype
 ):
@@ -1722,14 +1647,23 @@ def test_flash_attn_paged_kvcache_overflow(
         )
 
 def main():
+    kvpacked = False
+    mha_type=gqa
+    dropout_p = 0.0
+    softcap = 0.0
     dtype = torch.float16
     deterministic = False
     alibi = False
     local = False
     causal = True
     d = [64, 96, 128, 256]
-    swap_sq_sk = False
-    test_flash_attn_splitkv(seqlen_q, seqlen_k, swap_sq_sk, d, causal, local, alibi, deterministic, dtype)
+    seqlen_q = [2, 3]
+    seqlen_k = [2048, 20000]
+
+    test_flash_attn_varlen_output(
+        seqlen_q, seqlen_k, d, dropout_p, causal, local, alibi,
+        deterministic, mha_type, dtype, kvpacked, softcap
+    )
 
 if __name__ == '__main__':
     main()
