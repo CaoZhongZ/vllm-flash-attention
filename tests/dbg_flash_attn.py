@@ -927,55 +927,6 @@ def test_flash_attn_splitkv(
     assert (dv - dv_ref).abs().max().item() <= mult * (dv_pt - dv_ref).abs().max().item() + 2e-4
 
 
-# @pytest.mark.parametrize("dtype", ([torch.float16] if is_sm75 else [torch.float16, torch.bfloat16]))
-@pytest.mark.parametrize("dtype", [torch.float16])
-@pytest.mark.parametrize("num_splits", [1, 0])
-# @pytest.mark.parametrize("num_splits", [1])
-@pytest.mark.parametrize("mha_type", ["mha", "mqa", "gqa"])
-# @pytest.mark.parametrize("mha_type", ["mha"])
-@pytest.mark.parametrize("new_kv", [False, True])
-# @pytest.mark.parametrize("new_kv", [False])
-@pytest.mark.parametrize("alibi", [False, True])
-# @pytest.mark.parametrize("alibi", [False])
-@pytest.mark.parametrize("local", [False, True])
-# @pytest.mark.parametrize("local", [False])
-@pytest.mark.parametrize("causal", [False, True])
-# @pytest.mark.parametrize("causal", [False])
-@pytest.mark.parametrize("seqlen_new_eq_seqlen_q", [True, False])
-# @pytest.mark.parametrize("seqlen_new_eq_seqlen_q", [True])
-@pytest.mark.parametrize("rotary_interleaved", [False, True])
-# @pytest.mark.parametrize("rotary_interleaved", [False])
-@pytest.mark.parametrize("rotary_fraction", [0.0, 0.5, 1.0])
-# @pytest.mark.parametrize("rotary_fraction", [0.0])
-@pytest.mark.parametrize("paged_kv_block_size", [None, 16, 256, 512])
-# @pytest.mark.parametrize("paged_kv_block_size", [256, 512])
-# @pytest.mark.parametrize("paged_kv_block_size", [None])
-@pytest.mark.parametrize("has_leftpad", [False, True])
-# @pytest.mark.parametrize("has_leftpad", [True])
-# @pytest.mark.parametrize("has_batch_idx", [False, True])
-@pytest.mark.parametrize("has_batch_idx", [False])
-@pytest.mark.parametrize("d", [32, 59, 64, 80, 128, 256])
-# @pytest.mark.parametrize("d", [32, 64, 96, 128, 160, 192, 224, 256])
-# @pytest.mark.parametrize('d', [32, 40, 64, 80, 96, 128, 160, 192])
-# @pytest.mark.parametrize('d', [56, 80])
-# @pytest.mark.parametrize("d", [128])
-@pytest.mark.parametrize(
-    "seqlen_q,seqlen_k",
-    [
-        (1, 128),
-        (1, 339),
-        (3, 1024),
-        (64, 800),
-        (64, 256),
-        (3, 799),
-        (64, 2048),
-        (16, 20000),
-        (1, 128 * 1024),
-        (16, 128 * 1024),
-        (128, 128),
-    ],
-)
-# @pytest.mark.parametrize('seqlen_q,seqlen_k', [(256, 128)])
 def test_flash_attn_kvcache(
     seqlen_q,
     seqlen_k,
@@ -1641,22 +1592,27 @@ def test_flash_attn_paged_kvcache_overflow(
         )
 
 def main():
-    kvpacked = False
-    mha_type='gqa'
-    dropout_p = 0.0
-    softcap = 0.0
-    dtype = torch.float16
-    deterministic = False
+    dtype=torch.float16
+    num_splits = 1
+    mha_type = 'gqa'
+    new_kv = False
     alibi = False
     local = False
     causal = True
+    seqlen_new_eq_seqlen_q = True
+    rotary_interleaved = False
+    rotary_fraction = 0.0
+    paged_kv_block_size = 256
+    has_leftpad = False
+    has_batch_idx=False
     d = 128
     seqlen_q = 2
-    seqlen_k = 200000
-    test_flash_attn_varlen_output(
-        seqlen_q, seqlen_k, d, dropout_p, causal, local, alibi,
-        deterministic, mha_type, dtype, kvpacked, softcap
-    )
+    seqlen_k = 2048
+    test_flash_attn_kvcache(
+        seqlen_q, seqlen_k, d, has_batch_idx,
+        has_leftpad, paged_kv_block_size, rotary_fraction,
+        rotary_interleaved, seqlen_new_eq_seqlen_q, causal, local,
+        alibi, new_kv, mha_type, num_splits, dtype)
 
 if __name__ == '__main__':
     main()
