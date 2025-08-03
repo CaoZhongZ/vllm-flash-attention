@@ -958,10 +958,10 @@ def test_flash_attn_kvcache(
     torch.random.manual_seed(0)
     batch_size = 2
     batch_size_cache = batch_size if not has_batch_idx else batch_size * 2
-    nheads = 6
+    nheads = 16
     # rotary_dim must be a multiple of 16, and must be <= d
     rotary_dim = math.floor(int(rotary_fraction * d) / 16) * 16
-    nheads_k = nheads if mha_type == "mha" else (1 if mha_type == "mqa" else 3)
+    nheads_k = nheads if mha_type == "mha" else (1 if mha_type == "mqa" else 2)
     assert nheads % nheads_k == 0
     window_size = (-1, -1) if not local else torch.randint(0, seqlen_k, (2,))
     q = torch.randn(batch_size, seqlen_q, nheads, d, device=device, dtype=dtype)
@@ -1593,7 +1593,7 @@ def test_flash_attn_paged_kvcache_overflow(
 
 def main():
     dtype=torch.float16
-    num_splits = 1
+    num_splits = 4
     mha_type = 'gqa'
     new_kv = False
     alibi = False
@@ -1606,8 +1606,8 @@ def main():
     has_leftpad = False
     has_batch_idx=False
     d = 128
-    seqlen_q = 2
-    seqlen_k = 2048
+    seqlen_q = 1
+    seqlen_k = 8192
     test_flash_attn_kvcache(
         seqlen_q, seqlen_k, d, has_batch_idx,
         has_leftpad, paged_kv_block_size, rotary_fraction,
